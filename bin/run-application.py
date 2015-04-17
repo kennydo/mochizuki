@@ -1,7 +1,11 @@
 #!/usr/bin/env python
+import logging
 
 from mochizuki import Application
 from mochizuki.servers import IRCServer
+
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 if __name__ == "__main__":
