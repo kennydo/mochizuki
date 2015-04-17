@@ -76,10 +76,9 @@ class IRCServer(object):
         :return:
         """
 
-        # Normal messages end in "\r\n", which we don't care about
+        # Normal messages end in "\r\n", which we don't care about.
         message = message.rstrip()
 
         logger.debug('Received message "%r"', message)
-
 
     # Below, define the handlers for IRC commands
