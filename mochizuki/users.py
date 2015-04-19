@@ -22,6 +22,8 @@ class IRCUser(trollius.Protocol):
         self.hostname = None
         self.realname = None
 
+        self.is_registered = False
+
     @property
     def prefix(self):
         """The prefix send in PRIVMSG and other messages to indicate the

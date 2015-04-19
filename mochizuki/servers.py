@@ -73,7 +73,7 @@ class IRCServer(object):
         # then they are sending NICK for the first time.
         # First time NICK commands don't have a response.
         old_nick = user.nickname
-        if not user.realname:
+        if not user.is_registered:
             user.nickname = new_nick
             return
 
@@ -89,13 +89,13 @@ class IRCServer(object):
         user.nickname = new_nick
 
     def handle_user_command(self, user, message):
-        fragments = message.split(' ')
-        # TODO(kennydo) handle improper input here
-        username = fragments[1]
-        realname = message.rsplit(':', 1)[-1]
+        if user.is_registered:
+            user.reply(
+                replies.ERR_ALREADYREGISTRED,
+                ':Unauthorized command (already registered)')
+            return
 
-        user.username = username
-        user.realname = realname
+        user.realname = message.rsplit(':', 1)[-1]
 
         user.reply(
             replies.RPL_WELCOME,
@@ -117,6 +117,8 @@ class IRCServer(object):
                 user_modes='o',
                 channel_modes='o',
             ))
+
+        user.is_registered = True
 
     def handle_unkown_command(self, user, command):
         """This handler is called when this :class:`IRCServer` instance
