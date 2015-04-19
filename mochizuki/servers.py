@@ -92,7 +92,7 @@ class IRCServer(object):
         :param int timeout: timeout in seconds
         """
         yield trollius.From(trollius.sleep(timeout))
-        if not user.is_registered:
+        if not user.is_registered and user.has_active_connection:
             user.send('ERROR :Registration timed out')
             user.transport.close()
 
@@ -241,4 +241,4 @@ class IRCServer(object):
 
         user.reply(
             replies.ERR_UNKNOWNCOMMAND,
-            "{0}: Unknown command".format(command))
+            "{0} :Unknown command".format(command))

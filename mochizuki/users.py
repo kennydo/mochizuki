@@ -1,11 +1,15 @@
 import logging
+import re
 
 import trollius
+
 
 logger = logging.getLogger(__name__)
 
 
 class IRCUser(trollius.Protocol):
+    line_split_regex = re.compile(b'\r\n')
+
     def __init__(self, irc_server):
         """
 
@@ -16,6 +20,7 @@ class IRCUser(trollius.Protocol):
         self.irc_server = irc_server
         self.transport = None
         self.has_active_connection = False
+        self.read_buffer = bytearray()
 
         # High-level IRC variables
         self.nickname = None
@@ -58,21 +63,37 @@ class IRCUser(trollius.Protocol):
 
         :param data: str or bytestring, depending on Python version
         """
-        # Decode the data to unicode and then pass on to the server to handle.
-        # TODO(kennydo) make a data buffer to handle messages split over 2
-        #   calls to this function
-        # TODO(kennydo) handle non-utf8 data
-        try:
-            unicode_data = data.decode('utf8')
-        except UnicodeDecodeError:
-            unicode_data = None
-            logger.exception(
-                'Could not decode data received from user: %r', data)
 
-        if unicode_data:
-            for line in unicode_data.splitlines():
-                logger.debug('Received message: %s', line)
-                self.irc_server.handle(self, line)
+        # The data received might not be a full command, or it might be
+        # multiple commands, so we have a buffer to hold the data until
+        # we have the complete commands.
+        self.read_buffer += data
+
+        lines = self.line_split_regex.split(self.read_buffer)
+        if len(lines) == 1:
+            # The data received is not a complete command yet
+            return
+
+        # After a split, the last element of the list of lines is an empty
+        # string. If the data for the next command is incomplete, then it will
+        # show up as the last element of the lines list.
+        self.read_buffer = bytearray(lines.pop())
+
+        for line in lines:
+            # Decode the data to unicode and then pass on to the server
+            #  to handle.
+
+            # TODO(kennydo) handle non-utf8 data
+            try:
+                unicode_line = line.decode('utf8')
+            except UnicodeDecodeError:
+                unicode_line = None
+                logger.exception(
+                    'Could not decode data received from user: %r', line)
+
+            if unicode_line:
+                logger.debug('Received message: %s', unicode_line)
+                self.irc_server.handle(self, unicode_line)
 
     def reply(self, command, params, prefix=None, include_nick=True):
         """Send a reply to this user
