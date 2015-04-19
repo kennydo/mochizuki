@@ -19,8 +19,7 @@ class IRCServer(object):
 
     def __init__(self, name):
         """
-
-        :param str name: the name of the server
+        :param unicode name: the name of the server
             (up to MAX_HOSTNAME_LENGTH chars long)
         """
         self.creation_time = datetime.datetime.utcnow()
@@ -41,38 +40,47 @@ class IRCServer(object):
 
         :return: a :class:`Protocol` that gets instantiated
         """
+
         return partial(self.user_class, irc_server=self)
 
     def handle(self, user, message):
-        """
+        """Delegate each line of user input to the respective handler method.
+        If not method exists, calls the :method:`handle_unknown_command`.
 
-        :param user: the :class:`IRCUser` of the client
-        :param unicode message: a single message from the `user`
-        :return:
+        :type user: mochizuki.users.IRCUser
+        :param unicode message: a single line of input from the `user`
         """
 
         # Normal messages end in "\r\n", which we don't care about.
         message = message.rstrip()
         command = utils.parse_command(message)
 
-        logger.debug('Received message: "%r"', message)
-
         command_handler = getattr(
             self,
             'handle_{0}_command'.format(command.lower()),
             None)
         if not command_handler:
-            self.handle_unkown_command(user, command)
+            self.handle_unkown_command(user, message)
             return
 
         # Call the actual handler with the original message, COMMAND and all
         command_handler(user, message)
 
     def on_user_connection_made(self, user):
+        """Callback called when a user first connects
+
+        :type user: mochizuki.users.IRCUser
+        """
         logger.info('User (%r) connection made', user)
         self.loop.create_task(self.wait_for_user_registration_timeout(user))
 
     def on_user_connection_lost(self, user):
+        """ Callback called when a user's connection is lost.
+        This could be us terminating the user's transport, or it could be
+        the user terminating the connection.
+
+        :type user: mochizuki.users.IRCUser
+        """
         logger.info('User (%r) connection lost', user)
 
     @trollius.coroutine
@@ -80,7 +88,7 @@ class IRCServer(object):
         """Timeout the user if they don't finish registration before the
         timeout expires.
 
-        :param user: a :class:`IRCUser`
+        :type user: mochizuki.users.IRCUser
         :param int timeout: timeout in seconds
         """
         yield trollius.From(trollius.sleep(timeout))
@@ -90,9 +98,10 @@ class IRCServer(object):
 
     @trollius.coroutine
     def continually_ping_user(self, user, period=180, timeout=60):
-        """
+        """A coroutine that continuously PINGs the user. If the user doesn't
+        PONG within the timeout window, the user's connection is killed.
 
-        :param user: a :class:`IRCUser`
+        :type user: mochizuki.users.IRCUser
         :param int period: the time in seconds between PINGs send to the user
         :param int timeout: the seconds before we terminate the connection
             if the user doesn't PONG in time
@@ -117,6 +126,13 @@ class IRCServer(object):
     # Below, define the handlers for IRC commands
 
     def handle_nick_command(self, user, message):
+        """Handle the NICK command.
+
+        :param user: the user who sent the command
+        :type user: mochizuki.users.IRCUser
+        :param unicode message: the received message
+        """
+
         new_nick = utils.parse_message_params(message).split(' ', 1)[0]
         # TODO(kennydo) verify that no one else is using this nick
 
@@ -140,6 +156,13 @@ class IRCServer(object):
         user.nickname = new_nick
 
     def handle_user_command(self, user, message):
+        """Handle the USER command.
+
+        :param user: the user who sent the command
+        :type user: mochizuki.users.IRCUser
+        :param unicode message: the received message
+        """
+
         if user.is_registered:
             user.reply(
                 replies.ERR_ALREADYREGISTRED,
@@ -175,18 +198,19 @@ class IRCServer(object):
     def handle_pong_command(self, user, message):
         """Handle the PONG command.
 
-        :param user: a :class:`mochizuki.users.IRCUser`
+        :param user: the user who sent the command
+        :type user: mochizuki.users.IRCUser
         :param unicode message: the received message
-        :return:
         """
+
         user.has_pending_ping = False
 
     def handle_ping_command(self, user, message):
         """Handle the PING command.
 
-        :param user: a :class:`mochizuki.users.IRCUser`
+        :param user: the user who sent the command
+        :type user: mochizuki.users.IRCUser
         :param unicode message: the received message
-        :return:
         """
 
         # This should split the fragment into PING and whatever else is after
@@ -204,12 +228,17 @@ class IRCServer(object):
             response=fragments[1],
         ))
 
-    def handle_unkown_command(self, user, command):
+    def handle_unkown_command(self, user, message):
         """This handler is called when this :class:`IRCServer` instance
         doesn't have a handler defined for the given message.
+
+        :param user: the user who sent the command
+        :type user: mochizuki.users.IRCUser
+        :param unicode message: the received message
         """
+
+        command = utils.parse_command(message)
 
         user.reply(
             replies.ERR_UNKNOWNCOMMAND,
-            "{command}: Unknown command"
-            .format(command=command))
+            "{0}: Unknown command".format(command))

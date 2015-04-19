@@ -71,6 +71,7 @@ class IRCUser(trollius.Protocol):
 
         if unicode_data:
             for line in unicode_data.splitlines():
+                logger.debug('Received message: %s', line)
                 self.irc_server.handle(self, line)
 
     def reply(self, command, params, prefix=None, include_nick=True):
