@@ -1,4 +1,6 @@
 import logging
+import socket
+
 import trollius
 
 from .channels import IRCCHannel
@@ -10,8 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class Application(object):
-    def __init__(self, irc_server, host='127.0.0.1', port=6667):
-        self.irc_server = irc_server
+    def __init__(self, irc_server_factory, host='127.0.0.1', port=6667):
+        server_name = socket.getfqdn()
+        server_name = "local"
+        self.irc_server = irc_server_factory(server_name)
+
         self.host = host
         self.port = port
 
