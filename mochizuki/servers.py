@@ -1,3 +1,4 @@
+import datetime
 import logging
 from functools import partial
 
@@ -19,6 +20,7 @@ class IRCServer(object):
         :param str name: the name of the server
             (up to MAX_HOSTNAME_LENGTH chars long)
         """
+        self.creation_time = datetime.datetime.utcnow()
 
         self.name = name[:MAX_HOSTNAME_LENGTH]
 
@@ -101,16 +103,20 @@ class IRCServer(object):
             .format(user=user.prefix))
         user.reply(
             replies.RPL_YOURHOST,
-            "Welcome to the Internet Relay Network {user}"
-            .format(user=user.prefix))
+            "Your host is {server_name}".format(server_name=self.name))
         user.reply(
             replies.RPL_CREATED,
-            "Welcome to the Internet Relay Network {user}"
-            .format(user=user.prefix))
+            "This server was created {date}"
+            .format(date=self.creation_time.strftime("%b %d %Y at %H:%M:%S")))
         user.reply(
             replies.RPL_MYINFO,
-            "Welcome to the Internet Relay Network {user}"
-            .format(user=user.prefix))
+            "{server_name} {version} {user_modes} {channel_modes}"
+            .format(
+                server_name=self.name,
+                version='0.0.1',
+                user_modes='o',
+                channel_modes='o',
+            ))
 
     def handle_unkown_command(self, user, command):
         """This handler is called when this :class:`IRCServer` instance
