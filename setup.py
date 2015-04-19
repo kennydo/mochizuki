@@ -24,6 +24,8 @@ setup(
         'trollius',
     ],
     tests_require=[
+        'mock',
+        'pytest',
     ],
     entry_points={
     },
