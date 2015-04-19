@@ -15,6 +15,7 @@ class IRCUser(trollius.Protocol):
         # Low-level async connection variables
         self.irc_server = irc_server
         self.transport = None
+        self.has_active_connection = False
 
         # High-level IRC variables
         self.nickname = None
@@ -23,6 +24,7 @@ class IRCUser(trollius.Protocol):
         self.realname = None
 
         self.is_registered = False
+        self.has_pending_ping = False
 
     @property
     def prefix(self):
@@ -30,20 +32,25 @@ class IRCUser(trollius.Protocol):
         origin of the message
         """
 
-        return "{nickname}!{username}@{hostname}".format(
+        return '{nickname}!{username}@{hostname}'.format(
             nickname=self.nickname,
             username=self.username,
             hostname=self.hostname,
         )
 
+    def __repr__(self):
+        return self.prefix
+
     def connection_made(self, transport):
         self.transport = transport
         self.hostname, _ = transport.get_extra_info('socket').getpeername()
-        logger.info("Connection made to transport: %r", self.transport)
+        self.has_active_connection = True
+        self.irc_server.on_user_connection_made(self)
 
     def connection_lost(self, exc=None):
-        logger.info("Connection lost to socket: %r", self.transport)
         self.transport.close()
+        self.has_active_connection = False
+        self.irc_server.on_user_connection_lost(self)
 
     def data_received(self, data):
         """The callback for every chunk of data received from this client.
@@ -87,4 +94,13 @@ class IRCUser(trollius.Protocol):
             nickname=self.nickname,
         ).encode()
         self.transport.write(data)
-        logger.debug('Sent: %s', data)
+        logger.debug('Sent: %r', data)
+
+    def send(self, message):
+        """Send a raw message to the user
+
+        :param unicode message: the entire raw message to send (without "\r\n")
+        """
+        data = u"{message}\r\n".format(message=message).encode()
+        self.transport.write(data)
+        logger.debug('Sent: %r', data)
