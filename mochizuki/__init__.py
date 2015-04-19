@@ -3,10 +3,6 @@ import socket
 
 import trollius
 
-from .channels import IRCCHannel
-from .servers import IRCServer
-from .users import IRCUser
-
 
 logger = logging.getLogger(__name__)
 

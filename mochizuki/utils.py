@@ -7,6 +7,7 @@ def parse_command(message):
     """
     return message.split(' ', 1)[0]
 
+
 def parse_message_params(message):
     """Parse the non-command part of the string out from a user's message
     to the server.
