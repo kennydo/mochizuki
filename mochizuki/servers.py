@@ -101,6 +101,10 @@ class IRCServer(object):
         """A coroutine that continuously PINGs the user. If the user doesn't
         PONG within the timeout window, the user's connection is killed.
 
+        The timeout should always be less than the period, or else this
+        coroutine will still be waiting for the timeout when its next PING
+        is supposed to be sent.
+
         :type user: mochizuki.users.IRCUser
         :param int period: the time in seconds between PINGs send to the user
         :param int timeout: the seconds before we terminate the connection
@@ -108,7 +112,7 @@ class IRCServer(object):
         """
         while user.has_active_connection:
             user.send('PING :{server_name}'.format(server_name=self.name))
-            user.latest_ping = time.time()
+            latest_ping = time.time()
             user.has_pending_ping = True
             yield trollius.From(trollius.sleep(timeout))
             if user.has_pending_ping:
@@ -121,7 +125,9 @@ class IRCServer(object):
                 user.send('ERROR :Ping timeout ({0} seconds)'.format(timeout))
                 user.transport.close()
                 break
-            yield trollius.From(trollius.sleep(period))
+            time_since_ping = time.time() - latest_ping
+            time_to_sleep = max(period - time_since_ping, 0)
+            yield trollius.From(trollius.sleep(time_to_sleep))
 
     # Below, define the handlers for IRC commands
 
