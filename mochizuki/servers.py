@@ -41,6 +41,8 @@ class IRCClientProtocol(trollius.Protocol):
         :param data: str or bytestring, depending on Python version
         """
         # Decode the data to unicode and then pass on to the server to handle.
+        # TODO(kennydo) make a data buffer to handle messages split over 2 calls to
+        #   this function
         # TODO(kennydo) handle non-utf8 data
         try:
             unicode_data = data.decode('utf8')
