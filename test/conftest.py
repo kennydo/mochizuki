@@ -111,3 +111,11 @@ def new_irc_user():
         raise trollius.Return(protocol)
 
     return inner
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        'markers',
+        'irc_client_coroutine_test: '
+        'Mark the test as a coroutine test that interacts with the event '
+        'loop and an IRC server')
